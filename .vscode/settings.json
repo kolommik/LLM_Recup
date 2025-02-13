@@ -10,17 +10,23 @@
         "--show-column-numbers",
         "--strict"
     ],
-
+    
+    "python.pythonPath": ".venv\\Scripts\\python.exe",
+    "python.analysis.extraPaths": [
+        ".venv/lib/site-packages"
+    ],
     "python.envFile": "${workspaceFolder}/src/.env",
 
     "python.formatting.blackArgs": [
         "--line-length",
         "120"
     ],
-    
+
     "python.linting.flake8Args": [
         "--max-line-length=120"
     ],
-    
-    "editor.rulers": [120],
+
+    "editor.rulers": [
+        120
+    ],
 }
