@@ -66,6 +66,24 @@ class OpenAIChatStrategy(ChatModelStrategy):
                 price_input=0.15,
                 price_output=0.6,
             ),
+            Model(
+                name="o1-mini",
+                output_max_tokens=65_536,
+                price_input=1.10,
+                price_output=4.40,
+            ),
+            Model(
+                name="o3-mini",
+                output_max_tokens=100_000,
+                price_input=1.10,
+                price_output=4.40,
+            ),
+            Model(
+                name="o1",
+                output_max_tokens=32_768,
+                price_input=15.00,
+                price_output=60.00,
+            ),
         ]
         self.client = OpenAI(api_key=self.api_key)
         self.input_tokens = 0
@@ -131,18 +149,28 @@ class OpenAIChatStrategy(ChatModelStrategy):
 
         self.model = model_name
 
-        full_messages = [{"role": "system", "content": f"{system_prompt}"}]
+        if system_prompt:
+            full_messages = [{"role": "developer", "content": f"{system_prompt}"}]
+        else:
+            full_messages = []
         full_messages.extend(messages)
 
-        response = self.client.chat.completions.create(
-            model=model_name,
-            messages=full_messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-        )
+        if model_name in ["o1-mini", "o3-mini", "o1"]:
+            response = self.client.chat.completions.create(
+                model=model_name,
+                messages=full_messages,
+                max_completion_tokens=max_tokens,
+            )
+        else:
+            response = self.client.chat.completions.create(
+                model=model_name,
+                messages=full_messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
+            )
 
         self.output_tokens = response.usage.completion_tokens
         self.cache_create_tokens = 0
