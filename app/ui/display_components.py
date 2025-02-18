@@ -199,7 +199,13 @@ def display_preprocessed_data():
                 sep="|",
                 quoting=csv.QUOTE_NONE,
             )
-            copy_button(st.session_state["recognition_errors_txt"])
+            copy_button(
+                st.session_state["response_analyze_recognition_errors"],
+                "Скопировать полный текст",
+            )
+            copy_button(
+                st.session_state["recognition_errors_txt"], "Скопировать таблицу"
+            )
 
 
 def display_summary_results(step_name: str, response: str, stats: Dict[str, Any]):

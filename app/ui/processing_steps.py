@@ -11,7 +11,7 @@ def process_step(
     step_config: Dict[str, Any],
     content: str,
     model_name: str,
-    step_name: str,
+    terms_file: str = None,
 ) -> Tuple[str, Dict[str, Any]]:
     """
     Обработка одного шага с помощью модели
@@ -26,8 +26,8 @@ def process_step(
         Входной контент
     model_name: str
         Имя модели
-    step_name: str
-        Название шага для кэширования
+    terms_file: str, optional
+        Содержимое файла словаря терминов
 
     Returns:
     --------
@@ -38,11 +38,24 @@ def process_step(
     temperature = step_config.get("temperature", 0.0)
     max_tokens = chat_strategy.get_output_max_tokens(model_name)
 
-    messages = [
-        {"role": "user", "content": content},
-        {"role": "assistant", "content": "Текст принят."},
-        {"role": "user", "content": system_prompt},
-    ]
+    messages = []
+    # Добавляем основной контент
+    messages.extend(
+        [
+            {"role": "user", "content": content},
+            {"role": "assistant", "content": "Текст принят."},
+        ]
+    )
+    # Добавляем словарь терминов, если он предоставлен
+    if terms_file:
+        messages.extend(
+            [
+                {"role": "user", "content": f"Словарь терминов:\n{terms_file}"},
+                {"role": "assistant", "content": "Словарь терминов принят."},
+            ]
+        )
+    # Добавляем сам вопрос (system prompt)
+    messages.append({"role": "user", "content": system_prompt})
 
     response = chat_strategy.send_message(
         system_prompt="",
@@ -68,9 +81,23 @@ def process_initial_steps(
     file_content: str,
     model_name: str,
     steps: Dict[str, Any],
+    terms_file: str = None,
 ) -> Tuple[Dict[str, str], Dict[str, Dict[str, Any]], pd.DataFrame]:
     """
     Параллельная обработка начальных шагов анализа
+
+    Parameters:
+    -----------
+    chat_strategy: ChatModelStrategy
+        Стратегия работы с моделью
+    file_content: str
+        Содержимое файла для анализа
+    model_name: str
+        Имя модели
+    steps: Dict[str, Any]
+        Конфигурация шагов
+    terms_file: str, optional
+        Содержимое файла словаря терминов
 
     Returns:
     --------
@@ -93,7 +120,7 @@ def process_initial_steps(
         steps.get("analyze_metadata", {}),
         file_content,
         model_name,
-        "analyze_metadata",
+        terms_file,
     )
 
     responses["analyze_metadata"] = response
@@ -114,7 +141,7 @@ def process_initial_steps(
                 steps.get(step_name, {}),
                 file_content,
                 model_name,
-                step_name,
+                terms_file,
             )
             for step_name in parallel_steps
         }
@@ -135,6 +162,7 @@ def process_summary_initial(
     topic_roles: str,
     recognition_errors: str,
     step_config: Dict[str, Any],
+    terms_file: str = None,
 ) -> Tuple[str, Dict[str, Any]]:
     """
     Первый этап формирования итогов steps.generate_summary
@@ -150,7 +178,7 @@ def process_summary_initial(
         {"prompt": prompt, "temperature": step_config.get("temperature", 0)},
         file_content,
         model_name,
-        "generate_summary",
+        terms_file,
     )
 
 
@@ -162,12 +190,11 @@ def process_summary_recursive(
     recognition_errors: str,
     step_config: Dict[str, Any],
     prev_summary: str,
-    iteration: int = 1,
+    terms_file: str = None,
 ) -> Tuple[str, Dict[str, Any]]:
     """
     Рекурсивное улучшение итогов (step5+)
     """
-
     prompt = (
         step_config["prompt"]
         .replace("<<TOPIC_AND_ROLES>>", topic_roles)
@@ -175,15 +202,13 @@ def process_summary_recursive(
         .replace("<<PREV_RESUME>>", prev_summary)
     )
 
-    response, stats = process_step(
+    return process_step(
         chat_strategy,
         {"prompt": prompt, "temperature": step_config.get("temperature", 0)},
         file_content,
         model_name,
-        "refine_summary",
+        terms_file,
     )
-
-    return response, stats
 
 
 def process_all_summaries(
@@ -195,6 +220,7 @@ def process_all_summaries(
     generate_summary_config: Dict[str, Any],
     refine_summary_config: Dict[str, Any],
     iterations: int = 2,
+    terms_file: str = None,
 ) -> List[Tuple[str, Dict[str, Any]]]:
     """
     Полный процесс формирования итогов с рекурсивным улучшением
@@ -214,12 +240,13 @@ def process_all_summaries(
         topic_roles,
         recognition_errors,
         generate_summary_config,
+        terms_file,
     )
     results.append((response, stats))
 
     # Рекурсивные улучшения
     prev_summary = response
-    for i in range(iterations):
+    for _ in range(iterations):
         response, stats = process_summary_recursive(
             chat_strategy,
             file_content,
@@ -228,7 +255,7 @@ def process_all_summaries(
             recognition_errors,
             refine_summary_config,
             prev_summary,
-            i,
+            terms_file,
         )
         results.append((response, stats))
         prev_summary = response

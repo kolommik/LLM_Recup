@@ -51,10 +51,13 @@ def extract_table_to_dataframe(input_text):
     """
     try:
         # Находим начало таблицы (первая строка с заголовками)
-        table_start = input_text.find("| Исходный текст |")
+        table_start = input_text.find("| Исходный текст")
         if table_start == -1:
-            # Если таблица не найдена, возвращаем пустой DataFrame
-            return pd.DataFrame()
+            # Пробуем найти альтернативный вариант заголовка
+            table_start = input_text.find("| **Исходный текст")
+            if table_start == -1:
+                # Если таблица не найдена, возвращаем пустой DataFrame
+                return pd.DataFrame()
 
         # Находим конец таблицы (пустая строка или конец текста)
         table_end = input_text.find("\n\n", table_start)

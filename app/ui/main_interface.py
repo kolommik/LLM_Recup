@@ -44,9 +44,18 @@ def render_main_interface(chat_strategy: ChatModelStrategy, steps: Dict[str, Any
         content = json.loads(uploaded_file.getvalue().decode("utf-8"))
         file_content = json.dumps(content, ensure_ascii=False, indent=2)
 
+        # Чтение словаря терминов, если он загружен
+        terms_content = None
+        if "terms_file" in st.session_state:
+            terms_content = st.session_state["terms_file"].getvalue().decode("utf-8")
+
         # Обработка начальных шагов
         responses, stats, df_participation = process_initial_steps(
-            chat_strategy, file_content, st.session_state["current_model"], steps
+            chat_strategy,
+            file_content,
+            st.session_state["current_model"],
+            steps,
+            terms_content,  # Передаем содержимое словаря терминов
         )
 
         # Названия шагов
@@ -81,6 +90,11 @@ def render_main_interface(chat_strategy: ChatModelStrategy, steps: Dict[str, Any
 
     # Обработка и отображение результатов
     if "response_analyze_metadata" in st.session_state and st.button("Итоги"):
+        # Получаем словарь терминов, если он есть
+        terms_content = None
+        if "terms_file" in st.session_state:
+            terms_content = st.session_state["terms_file"].getvalue().decode("utf-8")
+
         summaries = process_all_summaries(
             chat_strategy,
             st.session_state["file_content"],
@@ -90,6 +104,7 @@ def render_main_interface(chat_strategy: ChatModelStrategy, steps: Dict[str, Any
             steps.get("generate_summary", {}),
             steps.get("refine_summary", {}),
             iterations=RECURSIVE_SUMMARY_ITERATIONS_CNT,
+            terms_file=terms_content,
         )
 
         # Сохраняем все итерации в session_state
@@ -99,7 +114,7 @@ def render_main_interface(chat_strategy: ChatModelStrategy, steps: Dict[str, Any
             st.session_state["total_cost"] += stats["full_price"]
 
     # Отображение всех итераций итогов
-    for i in range(0, RECURSIVE_SUMMARY_ITERATIONS_CNT):
+    for i in range(0, RECURSIVE_SUMMARY_ITERATIONS_CNT + 1):
         if f"summary{i}_response" in st.session_state:
             display_summary_results(
                 f"Итоги {i}",

@@ -1,9 +1,9 @@
 import streamlit.components.v1 as components
 
 
-def copy_button(text_to_copy: str):
+def copy_button(text_to_copy: str, title: str = "Скопировать"):
     """
-    Создает кнопку "Скопировать" с помощью HTML и JavaScript.
+    Создает кнопку с помощью HTML и JavaScript.
     Копирует переданный текст в буфер обмена при нажатии.
     """
     html_code = f"""
@@ -15,7 +15,7 @@ def copy_button(text_to_copy: str):
             border: none;
             cursor: pointer;
             border-radius: 4px;">
-            Скопировать
+            {title}
         </button>
     </div>
     <script>
